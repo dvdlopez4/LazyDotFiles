@@ -19,6 +19,7 @@ return {
     },
     {
         "rcarriga/nvim-dap-ui",
+        lazy = true,
         dependencies = { "mfussenegger/nvim-dap" }
     },
     {
@@ -41,9 +42,23 @@ return {
     },
     {
         'nvim-treesitter/nvim-treesitter',
+        config = function()
+            require 'nvim-treesitter.configs'.setup {
+                -- Automatically install missing parsers when entering buffer
+                -- Recommendation: set to false if you don't have `tree-sitter` CLI installed locally
+                auto_install = true,
+
+                incremental_selection = {
+                    enable = true,
+                    keymaps = {
+                        node_incremental = "v",
+                        node_decremental = "V",
+                    },
+                },
+            }
+        end,
         build = ":TSUpdate"
     },
-    { 'nvim-treesitter/nvim-treesitter-angular' },
     { 'nvim-treesitter/playground' },
     {
         'theprimeagen/harpoon',
@@ -65,10 +80,72 @@ return {
         keys = { { "<leader>u", "<cmd>UndotreeToggle<CR>" } }
     },
     {
+        'lewis6991/gitsigns.nvim',
+        config = function()
+            require('gitsigns').setup {
+                current_line_blame           = true, -- Toggle with `:Gitsigns toggle_current_line_blame`
+                current_line_blame_formatter = '<author>, <author_time:%Y-%m-%d> - <summary>',
+                on_attach                    = function(bufnr)
+                    local gs = package.loaded.gitsigns
+
+                    -- Actions
+                    vim.keymap.set('n', '<leader>hp', gs.preview_hunk)
+                    vim.keymap.set('n', '<leader>tb', gs.toggle_current_line_blame)
+                end
+            }
+        end
+    },
+    {
         'tpope/vim-fugitive',
         keys = {
-            { "<leader>gs", "<cmd>Git<CR>", desc = "Open fugitive" },
-        }
+            {
+                "<leader>gs",
+                "<cmd>Git<CR>",
+                desc = "Open fugitive"
+            },
+            { "<leader>gl",  "<cmd>terminal git log --decorate<CR>" },
+            { "<leader>gol", "<cmd>Git log --pretty='format:%h %ai %an %s %d'<CR>" },
+            { "<leader>grl", "<cmd>Git log --raw<CR>" },
+            { "<leader>gba", "<cmd>Git branch -a<CR>" },
+            {
+                "<leader>gB",
+                "<cmd>Git blame<CR>",
+                desc = "git blame"
+            },
+            {
+                "<leader>gg",
+                "<cmd>Git log --graph --format=format:'%C(auto)%h%C(reset) | %ad | %C(auto)%s%C(reset) | (%an)'<CR>",
+                desc = "Pretty git graph"
+            }
+        },
+        config = function()
+            local my_fugitive_group = vim.api.nvim_create_augroup("my_fugitive_group", {})
+            local autocmd = vim.api.nvim_create_autocmd
+            autocmd("BufWinEnter", {
+                group = my_fugitive_group,
+                pattern = "*",
+                callback = function()
+                    if vim.bo.ft ~= "fugitive" then
+                        return
+                    end
+
+                    local bufnr = vim.api.nvim_get_current_buf()
+                    local opts = { buffer = bufnr, remap = false }
+                    vim.keymap.set("n", "<leader>p", function()
+                        vim.cmd.Git('push')
+                    end, opts, { desc = "push" })
+
+                    -- rebase always
+                    vim.keymap.set("n", "<leader>P", function()
+                        vim.cmd.Git({ 'pull', '--rebase' })
+                    end, opts)
+
+                    -- NOTE: It allows me to easily set the branch i am pushing and any tracking
+                    -- needed if i did not set the branch up correctly
+                    vim.keymap.set("n", "<leader>t", ":Git push -u origin ", opts);
+                end,
+            })
+        end
     },
     {
         'VonHeikemen/lsp-zero.nvim',
@@ -120,7 +197,7 @@ return {
                     ['<C-d>'] = cmp.mapping.scroll_docs(4),
                     ['<C-p>'] = cmp.mapping.select_prev_item(cmp_select),
                     ['<C-n>'] = cmp.mapping.select_next_item(cmp_select),
-                    ['<C-y>'] = cmp.mapping.confirm({ select = true }),
+                    ['<CR>'] = cmp.mapping.confirm({ select = true }),
                 })
             })
 
@@ -417,7 +494,50 @@ return {
             })
         end
     },
-    { 'zane-/cder.nvim' },
+    {
+        'zane-/cder.nvim',
+        config = function()
+            require('telescope').setup({
+                extensions = {
+                    cder = {
+                        previewer_command =
+                            'exa ' ..
+                            '-a ' ..
+                            '--color=always ' ..
+                            '-T ' ..
+                            '--level=3 ' ..
+                            '--icons ' ..
+                            '--long ' ..
+                            '--no-permissions ' ..
+                            '--no-user ' ..
+                            '--no-filesize ' ..
+                            '--ignore-glob=\".git|node_modules|cdk.out\"',
+                        dir_command = {
+                            'fdfind',
+                            '--type=d',
+                            '-E',
+                            '{node_modules,GAIT}',
+                            '.',
+                            os.getenv('PROJ_DIR')
+                        },
+                        pager_command = 'batcat --plain --paging=always --pager="less -RS"',
+                        mappings = {
+                            default = function(directory)
+                                vim.cmd.cd(directory)
+                            end,
+                            ['<CR>'] = function(directory)
+                                vim.cmd.lcd(directory)
+                                vim.cmd("e " .. directory)
+                            end,
+                        },
+                    },
+                },
+            })
+        end,
+        keys = {
+            { "<leader>pp", "<cmd>Telescope cder<CR>", desc = "Open projects" }
+        }
+    },
     {
         'kevinhwang91/nvim-ufo',
         dependencies = 'kevinhwang91/promise-async',
