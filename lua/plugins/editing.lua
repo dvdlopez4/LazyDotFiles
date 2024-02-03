@@ -94,7 +94,7 @@ return {
 
             local lspconfig = require("lspconfig")
             local pid = vim.fn.getpid()
-            local omnisharp_bin = "/mnt/c/Users/Gamer/Downloads/omnisharp-linux-arm64-net6.0/OmniSharp"
+            local omnisharp_bin = "~/.local/share/lazy/mason/packages/omnisharp/omnisharp"
 
             require 'lspconfig'.omnisharp.setup {
                 cmd = { omnisharp_bin, "--languageserver", "--hostPID", tostring(pid) },
